@@ -637,7 +637,7 @@ function startGame() {
   const timeSec = cfg.missedMode ? 90 : cfg.timeSec;
   gs = {
     correct: 0, attempts: 0, streak: 0, bestStreak: 0,
-    cmplx: 0, wrongCnt: 0, allCleared: false,
+    cmplx: 0, wrongCnt: 0, waitingNext: false, allCleared: false,
     t0: Date.now(), timeLeft: timeSec, timeSec,
     ticker: null, cur: null, queue: [],
   };
@@ -681,6 +681,7 @@ function nextQ() {
   inp.className = 'answer-inp';
   $('hint').textContent = '';
   $('hint').className = 'hint-line';
+  if (gs.waitingNext) { gs.waitingNext = false; resetCheckBtn(); }
 
   const p = getNextProblem();
   if (p === null) {
@@ -732,12 +733,15 @@ function checkAnswer() {
     gs.cmplx++;
     gs.bestStreak = Math.max(gs.bestStreak, gs.streak);
     inp.className = 'answer-inp ok';
+    inp.disabled  = true;
     setHint('✓ Correct!', 'ok');
     showStreak();
 
     if (cfg.missedMode) removeMissed(gs.cur);
 
-    setTimeout(() => { gs.attempts++; advance(); }, 500);
+    gs.waitingNext = true;
+    $('check-btn').textContent        = '→';
+    $('check-btn').style.background   = 'var(--green)';
 
   } else {
     gs.streak = 0;
@@ -770,7 +774,20 @@ function setHint(txt, cls) {
 }
 
 function showStreak() {
-  $('streak').textContent = gs.streak >= 3 ? `&#128293; ${gs.streak} in a row!` : '';
+  $('streak').textContent = gs.streak >= 3 ? `🔥 ${gs.streak} in a row!` : '';
+}
+
+function proceedToNext() {
+  gs.waitingNext = false;
+  gs.attempts++;
+  resetCheckBtn();
+  advance();
+}
+
+function resetCheckBtn() {
+  $('check-btn').textContent      = '✓';
+  $('check-btn').style.background = 'var(--acc)';
+  $('answer-inp').disabled        = false;
 }
 
 function advance() {
@@ -820,7 +837,7 @@ function endGame() {
 $('start-btn').addEventListener('click', startGame);
 $('again-btn').addEventListener('click', startGame);
 $('settings-btn').addEventListener('click', () => { refreshMissedUI(); show('setup'); });
-$('check-btn').addEventListener('click', checkAnswer);
+$('check-btn').addEventListener('click', () => gs.waitingNext ? proceedToNext() : checkAnswer());
 $('quit-btn').addEventListener('click', endGame);
 
 $('skip-btn').addEventListener('click', () => {
@@ -840,15 +857,7 @@ $('skip-btn').addEventListener('click', () => {
 });
 
 $('answer-inp').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); checkAnswer(); }
-});
-
-$('answer-inp').addEventListener('input', function () {
-  const num = parseInt(this.value.trim(), 10);
-  if (!isNaN(num) && gs.cur && num === gs.cur.ans) {
-    clearTimeout(this._t);
-    this._t = setTimeout(checkAnswer, 180);
-  }
+  if (e.key === 'Enter') { e.preventDefault(); gs.waitingNext ? proceedToNext() : checkAnswer(); }
 });
 
 // ── iOS INSTALL BANNER ───────────────────────────────────────────
