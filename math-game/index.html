@@ -158,20 +158,20 @@
     /* ── GAME ── */
     #game {
       padding:
-        calc(env(safe-area-inset-top, 44px) + 14px)
+        calc(env(safe-area-inset-top, 44px) + 8px)
         20px
-        calc(env(safe-area-inset-bottom, 34px) + 14px);
+        calc(env(safe-area-inset-bottom, 34px) + 8px);
     }
 
     .game-top {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .game-info { font-size: 0.85rem; color: var(--muted); }
 
     .timer-track {
       height: 4px; background: var(--surf); border-radius: 2px;
-      margin-bottom: 32px; overflow: hidden;
+      margin-bottom: 16px; overflow: hidden;
     }
     .timer-fill {
       height: 100%; border-radius: 2px; background: var(--acc);
@@ -180,11 +180,11 @@
 
     .problem-area {
       flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 24px;
+      align-items: center; justify-content: center; gap: 14px;
     }
 
     .problem-eq {
-      font-size: clamp(1.8rem, 9vw, 3rem);
+      font-size: clamp(1.6rem, 8vw, 2.6rem);
       font-weight: 700; text-align: center; line-height: 1.2;
       letter-spacing: -0.02em; min-height: 1.3em;
     }
@@ -192,7 +192,7 @@
     .answer-row { display: flex; gap: 10px; align-items: center; }
 
     .answer-inp {
-      width: 150px; padding: 12px 14px;
+      width: 150px; padding: 10px 14px;
       background: var(--surf); border: 2px solid var(--border);
       border-radius: 14px; color: var(--txt);
       font-size: 1.4rem; font-weight: 600; text-align: center;
@@ -204,24 +204,24 @@
     .answer-inp.err { border-color: var(--red);   background: #1f0a0a; }
 
     .check-btn {
-      width: 50px; height: 50px;
+      width: 48px; height: 48px;
       background: var(--acc); border: none; border-radius: 14px;
       color: white; font-size: 1.3rem; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       -webkit-tap-highlight-color: transparent;
     }
 
-    .hint-line { font-size: 0.9rem; min-height: 22px; text-align: center; }
+    .hint-line { font-size: 0.88rem; min-height: 18px; text-align: center; }
     .hint-line.ok  { color: var(--green); }
     .hint-line.err { color: var(--red); }
 
-    .streak-line { font-size: 0.85rem; min-height: 22px; color: var(--amber); text-align: center; }
+    .streak-line { font-size: 0.82rem; min-height: 18px; color: var(--amber); text-align: center; }
 
-    .game-footer { display: flex; justify-content: center; gap: 12px; margin-top: 8px; }
+    .game-footer { display: flex; justify-content: center; gap: 12px; margin-top: 6px; }
     .ghost-btn {
-      padding: 8px 20px;
+      padding: 6px 16px;
       background: transparent; border: 1px solid var(--border); border-radius: 999px;
-      color: var(--muted); font-size: 0.8rem; cursor: pointer;
+      color: var(--muted); font-size: 0.78rem; cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
 
@@ -532,7 +532,7 @@ function problemText(p) {
 function startGame() {
   gs = {
     correct: 0, attempts: 0, streak: 0, bestStreak: 0,
-    wrongCnt: 0, waitingNext: false, allCleared: false,
+    wrongCnt: 0, allCleared: false,
     t0: Date.now(), timeLeft: TIME_SEC,
     ticker: null, cur: null, queue: [],
   };
@@ -566,21 +566,20 @@ function updateBar() {
 function nextQ() {
   const inp = $('answer-inp');
   clearTimeout(inp._t);
-  inp.value = '';
+  inp.value     = '';
   inp.className = 'answer-inp';
   inp.disabled  = false;
-  $('hint').textContent  = '';
-  $('hint').className    = 'hint-line';
+  $('hint').textContent   = '';
+  $('hint').className     = 'hint-line';
   $('streak').textContent = '';
-  if (gs.waitingNext) { gs.waitingNext = false; resetCheckBtn(); }
 
   const p = getNextProblem();
   if (p === null) { gs.allCleared = true; endGame(); return; }
 
   gs.cur      = p;
   gs.wrongCnt = 0;
-  $('g-prog').textContent  = Math.ceil(Math.max(0, gs.timeLeft)) + 's';
-  $('g-score').textContent = gs.correct;
+  $('g-prog').textContent     = Math.ceil(Math.max(0, gs.timeLeft)) + 's';
+  $('g-score').textContent    = gs.correct;
   $('problem-eq').textContent = problemText(gs.cur);
   inp.focus();
 }
@@ -596,13 +595,10 @@ function checkAnswer() {
     gs.streak++;
     gs.bestStreak = Math.max(gs.bestStreak, gs.streak);
     inp.className = 'answer-inp ok';
-    inp.disabled  = true;
     setHint('✓ Correct!', 'ok');
     showStreak();
     if (cfg.missedMode) removeMissed(gs.cur);
-    gs.waitingNext = true;
-    $('check-btn').textContent      = '→';
-    $('check-btn').style.background = 'var(--green)';
+    setTimeout(() => { gs.attempts++; nextQ(); }, 700);
   } else {
     gs.streak = 0;
     showStreak();
@@ -612,11 +608,15 @@ function checkAnswer() {
     if (gs.wrongCnt >= 3) {
       setHint(`✗  Answer: ${fmt(gs.cur.ans)}`, 'err');
       if (!cfg.missedMode) addMissed(gs.cur);
-      setTimeout(() => { gs.attempts++; nextQ(); }, 1800);
+      setTimeout(() => { gs.attempts++; nextQ(); }, 1500);
     } else {
       setHint(`✗ Try again (${3 - gs.wrongCnt} left)`, 'err');
       inp.value = '';
-      setTimeout(() => { inp.className = 'answer-inp'; $('hint').textContent = ''; }, 700);
+      setTimeout(() => {
+        inp.className = 'answer-inp';
+        $('hint').textContent = '';
+        inp.focus();
+      }, 600);
     }
   }
 }
@@ -628,19 +628,6 @@ function setHint(txt, cls) {
 
 function showStreak() {
   $('streak').textContent = gs.streak >= 3 ? `🔥 ${gs.streak} in a row!` : '';
-}
-
-function proceedToNext() {
-  gs.waitingNext = false;
-  gs.attempts++;
-  resetCheckBtn();
-  nextQ();
-}
-
-function resetCheckBtn() {
-  $('check-btn').textContent      = '✓';
-  $('check-btn').style.background = 'var(--acc)';
-  $('answer-inp').disabled        = false;
 }
 
 function endGame() {
@@ -681,7 +668,7 @@ function endGame() {
 $('start-btn').addEventListener('click', startGame);
 $('again-btn').addEventListener('click', startGame);
 $('settings-btn').addEventListener('click', () => { refreshMissedUI(); refreshStatsBar(); show('setup'); });
-$('check-btn').addEventListener('click', () => gs.waitingNext ? proceedToNext() : checkAnswer());
+$('check-btn').addEventListener('click', checkAnswer);
 $('quit-btn').addEventListener('click', endGame);
 
 $('skip-btn').addEventListener('click', () => {
@@ -693,7 +680,7 @@ $('skip-btn').addEventListener('click', () => {
 });
 
 $('answer-inp').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); gs.waitingNext ? proceedToNext() : checkAnswer(); }
+  if (e.key === 'Enter') { e.preventDefault(); checkAnswer(); }
 });
 
 // ── iOS INSTALL BANNER ───────────────────────────────────────────
