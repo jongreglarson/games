@@ -148,19 +148,8 @@
     .timer-btn.running { border-color: var(--red); color: var(--red); }
 
     .journey-row { margin-bottom: 8px; }
-    .journey-sel-wrap { position: relative; }
-    .journey-sel {
-      width: 100%; padding: 9px 30px 9px 12px;
-      background: var(--surf); border: 1px solid var(--border); border-radius: 10px;
-      color: var(--txt); font-size: 0.88rem; cursor: pointer;
-    }
-    .journey-sel option { background: #1e1f32; color: #e2e2f0; }
-    .journey-arrow {
-      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-      color: var(--muted); font-size: 0.8rem; pointer-events: none;
-    }
     .journey-inp {
-      width: 100%; padding: 9px 12px; margin-top: 6px;
+      width: 100%; padding: 9px 12px;
       background: var(--surf); border: 1px solid var(--border); border-radius: 10px;
       color: var(--txt); font-size: 0.88rem; outline: none;
     }
@@ -326,13 +315,9 @@
     <span class="mem-pos" id="mem-pos">1 – 3 of 52</span>
   </div>
   <div class="journey-row">
-    <div class="journey-sel-wrap">
-      <select id="journey-sel" class="journey-sel">
-        <option value="__new__">+ New journey&hellip;</option>
-      </select>
-      <span class="journey-arrow">&#9660;</span>
-    </div>
-    <input id="journey-inp" class="journey-inp" type="text" placeholder="Journey name&hellip;" />
+    <input id="journey-inp" class="journey-inp" list="journey-datalist"
+           type="text" placeholder="Journey name&hellip;" autocomplete="off" />
+    <datalist id="journey-datalist"></datalist>
   </div>
   <div class="mem-timer-row">
     <span class="timer-disp" id="timer-disp">0:00</span>
@@ -444,38 +429,27 @@ function loadSessions() {
 }
 function saveSessions(a) { localStorage.setItem(SESSIONS_KEY, JSON.stringify(a)); }
 
-function populateJourneySelect() {
-  const sel      = $('journey-sel');
-  // Sort ascending: least recently used first, most recently used last
-  const journeys = loadJourneys().sort((a, b) => a.lastUsed - b.lastUsed);
+function populateJourneyList() {
+  const inp      = $('journey-inp');
+  const dl       = $('journey-datalist');
+  // Most recently used first in the suggestion list
+  const journeys = loadJourneys().sort((a, b) => b.lastUsed - a.lastUsed);
 
-  sel.innerHTML = '<option value="__new__">+ New journey…</option>';
+  dl.innerHTML = '';
   journeys.forEach(j => {
-    const o   = document.createElement('option');
-    o.value   = j.name;
-    const d   = new Date(j.lastUsed);
-    const ds  = (d.getMonth() + 1) + '/' + d.getDate() + '/' + String(d.getFullYear()).slice(2);
-    o.textContent = j.name + '  (' + ds + ')';
-    sel.appendChild(o);
+    const opt  = document.createElement('option');
+    opt.value  = j.name;
+    const d    = new Date(j.lastUsed);
+    opt.label  = j.name + '  (' + (d.getMonth() + 1) + '/' + d.getDate() + '/' + String(d.getFullYear()).slice(2) + ')';
+    dl.appendChild(opt);
   });
 
-  // lastJourneyName is a JS variable that survives iOS DOM resets on hidden screens
-  const target = lastJourneyName || (journeys.length ? journeys[journeys.length - 1].name : '');
-  if (target && [...sel.options].some(o => o.value === target)) {
-    sel.value = target;
-  }
-  updateJourneyVis();
-}
-
-function updateJourneyVis() {
-  $('journey-inp').style.display = $('journey-sel').value === '__new__' ? '' : 'none';
+  const target = lastJourneyName || (journeys.length ? journeys[0].name : '');
+  if (target) inp.value = target;
 }
 
 function getCurrentJourney() {
-  const sel  = $('journey-sel');
-  const name = sel.value === '__new__'
-    ? ($('journey-inp').value.trim() || 'Untitled Journey')
-    : sel.value;
+  const name = $('journey-inp').value.trim() || 'Untitled Journey';
   lastJourneyName = name;
   return name;
 }
@@ -1004,7 +978,7 @@ $('start-btn').addEventListener('click', () => {
   buildShuffled();
   memPage = 0;
   resetTimer();
-  populateJourneySelect();
+  populateJourneyList();
   renderMem();
   show('memorize');
 });
@@ -1015,7 +989,6 @@ $('timer-btn').addEventListener('click', () => {
 
 $('prev-btn').addEventListener('click', () => { memPage--; renderMem(); });
 $('next-btn').addEventListener('click', () => { memPage++; renderMem(); });
-$('journey-sel').addEventListener('change', updateJourneyVis);
 
 $('done-btn').addEventListener('click', () => {
   pendingJourney = getCurrentJourney();
@@ -1038,7 +1011,7 @@ $('again-btn').addEventListener('click', () => {
   buildShuffled();
   memPage = 0;
   resetTimer();
-  populateJourneySelect();
+  populateJourneyList();
   renderMem();
   show('memorize');
 });
@@ -1053,7 +1026,7 @@ $('home-btn').addEventListener('click', () => show('setup'));
     lastJourneyName = journeys.reduce((a, b) => a.lastUsed > b.lastUsed ? a : b).name;
   }
 })();
-populateJourneySelect();
+populateJourneyList();
 
 // ── SERVICE WORKER ────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
