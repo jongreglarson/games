@@ -160,12 +160,25 @@
     .prog-fill { height: 100%; border-radius: 2px; background: var(--acc); transition: width .2s; }
 
     /* recall group of 3 */
-    .trail-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 12px; align-items: flex-start; }
+    .trail-nav-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .trail-nav-btn {
+      width: 32px; height: 32px; flex-shrink: 0;
+      background: var(--surf); border: 1px solid var(--border); border-radius: 9px;
+      color: var(--txt); font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .trail-nav-btn:disabled { opacity: 0.2; cursor: default; }
+    .trail-pg-lbl { font-size: 0.75rem; color: var(--muted); }
+    .trail-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; align-items: flex-start; }
     .trail-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .rc-card { width: 94px; height: 132px; }
-    .rc-card .c-val  { font-size: 1.9rem; }
-    .rc-card .c-suit { font-size: 2.2rem; margin-top: 2px; }
-    .rc-card .card-corner { font-size: 0.75rem; }
+    .rc-card { width: 88px; height: 122px; }
+    .rc-card .c-val  { font-size: 1.7rem; }
+    .rc-card .c-suit { font-size: 2rem; margin-top: 2px; }
+    .rc-card .card-corner { font-size: 0.72rem; }
     .trail-lbl { font-size: 0.68rem; color: var(--muted); }
     .trail-slot.cur .trail-lbl { color: var(--acc); font-weight: 600; }
 
@@ -280,6 +293,11 @@
       <div class="rc-pos" id="rc-pos">Card 1 of 52</div>
     </div>
     <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="trail-nav-bar">
+      <button class="trail-nav-btn" id="trail-prev">&#8592;</button>
+      <span class="trail-pg-lbl" id="trail-pg-lbl">Group 1 of 18</span>
+      <button class="trail-nav-btn" id="trail-next">&#8594;</button>
+    </div>
     <div class="trail-row" id="trail-row"></div>
     <div class="suit-row" id="suit-row"></div>
     <div class="val-grid"  id="val-grid"></div>
@@ -316,10 +334,11 @@ const PAGES  = Math.ceil(52 / 3); // 18
 const $ = id => document.getElementById(id);
 const isRed = s => s === '♥' || s === '♦';
 
-let deck    = [];
-let answers = [];
-let memPage = 0;
-let selSuit = '♠';
+let deck      = [];
+let answers   = [];
+let memPage   = 0;
+let selSuit   = '♠';
+let viewGroup = 0;
 
 let timerSec     = 0;
 let timerRunning = false;
@@ -399,8 +418,9 @@ function renderMem() {
 
 // ── RECALL SETUP ──────────────────────────────────────────────────
 function startRecall() {
-  answers = [];
-  selSuit = '♠';
+  answers   = [];
+  selSuit   = '♠';
+  viewGroup = 0;
   buildSuitRow();
   buildValGrid();
   renderRecall();
@@ -443,6 +463,7 @@ function buildValGrid() {
 function enterCard(val) {
   if (answers.length >= 52) return;
   answers.push({ suit: selSuit, val });
+  viewGroup = Math.floor(answers.length / 3); // snap to current group
   renderRecall();
   if (answers.length === 52) setTimeout(showResults, 300);
 }
@@ -450,6 +471,7 @@ function enterCard(val) {
 function undoCard() {
   if (answers.length === 0) return;
   answers.pop();
+  viewGroup = Math.floor(answers.length / 3); // snap to current group
   renderRecall();
 }
 
@@ -461,16 +483,18 @@ function renderRecall() {
 }
 
 function renderTrail() {
-  const row = $('trail-row');
-  row.innerHTML = '';
+  const row        = $('trail-row');
+  row.innerHTML    = '';
   const n          = answers.length;
-  const groupStart = Math.floor(n / 3) * 3;
+  const curGroup   = Math.floor(n / 3);
+  const groupStart = viewGroup * 3;
+  const isLive     = viewGroup === curGroup;
 
   for (let i = groupStart; i < groupStart + 3; i++) {
     const slot      = document.createElement('div');
-    const isCurrent = i === n;
+    const isCurrent = isLive && i === n;
     const isBeyond  = i >= 52;
-    slot.className  = 'trail-slot' + (isCurrent && !isBeyond ? ' cur' : '');
+    slot.className  = 'trail-slot' + (isCurrent ? ' cur' : '');
 
     let tile;
     if (isBeyond) {
@@ -479,7 +503,8 @@ function renderTrail() {
       tile.style.visibility = 'hidden';
     } else if (i < n) {
       tile = makeTile(answers[i], 'rc-card');
-      if (i < n - 1) tile.style.opacity = '0.45';
+      // only fade within the live group; past groups show at full opacity
+      if (isLive && i < n - 1) tile.style.opacity = '0.45';
     } else if (isCurrent) {
       tile = document.createElement('div');
       tile.className = 'card-ph rc-card';
@@ -496,6 +521,10 @@ function renderTrail() {
     slot.appendChild(lbl);
     row.appendChild(slot);
   }
+
+  $('trail-prev').disabled = viewGroup === 0;
+  $('trail-next').disabled = viewGroup >= curGroup;
+  $('trail-pg-lbl').textContent = `Group ${viewGroup + 1} of ${PAGES}`;
 }
 
 // ── RESULTS ───────────────────────────────────────────────────────
@@ -544,6 +573,8 @@ $('done-btn').addEventListener('click', () => { stopTimer(); startRecall(); });
 
 $('undo-btn').addEventListener('click', undoCard);
 $('back-btn').addEventListener('click', () => { renderMem(); show('memorize'); });
+$('trail-prev').addEventListener('click', () => { viewGroup--; renderTrail(); });
+$('trail-next').addEventListener('click', () => { viewGroup++; renderTrail(); });
 $('quit-btn').addEventListener('click', () => show('setup'));
 
 $('again-btn').addEventListener('click', () => {
