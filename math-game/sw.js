@@ -1,4 +1,4 @@
-const V = 'math-boost-v6';
+const V = 'math-boost-v7';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e =>
