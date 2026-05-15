@@ -424,8 +424,9 @@ let answers        = [];
 let memPage        = 0;
 let selSuit        = '♠';
 let viewGroup      = 0;
-let pendingJourney = '';
-let pendingSecs    = 0;
+let pendingJourney  = '';
+let pendingSecs     = 0;
+let lastJourneyName = '';
 
 // ── JOURNEY / SESSION STORAGE ─────────────────────────────────────
 const JOURNEYS_KEY = 'card-memory-journeys';
@@ -445,22 +446,23 @@ function saveSessions(a) { localStorage.setItem(SESSIONS_KEY, JSON.stringify(a))
 
 function populateJourneySelect() {
   const sel      = $('journey-sel');
-  const prev     = sel.value;
-  // Sort ascending by lastUsed = least recent first → most recent last
+  // Sort ascending: least recently used first, most recently used last
   const journeys = loadJourneys().sort((a, b) => a.lastUsed - b.lastUsed);
 
   sel.innerHTML = '<option value="__new__">+ New journey…</option>';
   journeys.forEach(j => {
-    const o = document.createElement('option');
-    o.value = o.textContent = j.name;
+    const o   = document.createElement('option');
+    o.value   = j.name;
+    const d   = new Date(j.lastUsed);
+    const ds  = (d.getMonth() + 1) + '/' + d.getDate() + '/' + String(d.getFullYear()).slice(2);
+    o.textContent = j.name + '  (' + ds + ')';
     sel.appendChild(o);
   });
 
-  // Restore previous selection; otherwise default to most recently used
-  if (prev && prev !== '__new__' && [...sel.options].some(o => o.value === prev)) {
-    sel.value = prev;
-  } else if (journeys.length > 0) {
-    sel.value = journeys[journeys.length - 1].name;
+  // lastJourneyName is a JS variable that survives iOS DOM resets on hidden screens
+  const target = lastJourneyName || (journeys.length ? journeys[journeys.length - 1].name : '');
+  if (target && [...sel.options].some(o => o.value === target)) {
+    sel.value = target;
   }
   updateJourneyVis();
 }
@@ -470,10 +472,12 @@ function updateJourneyVis() {
 }
 
 function getCurrentJourney() {
-  const sel = $('journey-sel');
-  return sel.value === '__new__'
+  const sel  = $('journey-sel');
+  const name = sel.value === '__new__'
     ? ($('journey-inp').value.trim() || 'Untitled Journey')
     : sel.value;
+  lastJourneyName = name;
+  return name;
 }
 
 function recordSession(name, secs, correct) {
@@ -1041,6 +1045,14 @@ $('again-btn').addEventListener('click', () => {
 $('home-btn').addEventListener('click', () => show('setup'));
 
 // ── INIT ──────────────────────────────────────────────────────────
+// Seed lastJourneyName from the most recently used journey so it's
+// correct even before the user makes any selection in this session.
+(function () {
+  const journeys = loadJourneys();
+  if (journeys.length) {
+    lastJourneyName = journeys.reduce((a, b) => a.lastUsed > b.lastUsed ? a : b).name;
+  }
+})();
 populateJourneySelect();
 
 // ── SERVICE WORKER ────────────────────────────────────────────────
