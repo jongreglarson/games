@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Card Memory" />
+  <meta name="theme-color" content="#12131f" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Card Memory</title>
+  <style>
+    :root {
+      --bg:     #12131f;
+      --surf:   #1e1f32;
+      --surf2:  #2a2b45;
+      --acc:    #6c6ffd;
+      --acc-lt: #a5a6ff;
+      --txt:    #e2e2f0;
+      --muted:  #8b8ca8;
+      --green:  #4ade80;
+      --red:    #f87171;
+      --border: #3d3e5c;
+      --red-c:  #cc1111;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      background: var(--bg); color: var(--txt);
+      height: 100%; height: -webkit-fill-available; overflow: hidden;
+    }
+
+    /* ── SCREENS ── */
+    .screen {
+      display: none; flex-direction: column;
+      height: 100vh; height: -webkit-fill-available; overflow: hidden;
+    }
+    .screen.on { display: flex; }
+    #results { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+    /* shared game padding */
+    .gp {
+      padding:
+        calc(env(safe-area-inset-top, 44px) + 8px) 20px
+        calc(env(safe-area-inset-bottom, 34px) + 8px);
+    }
+
+    /* ── SETUP ── */
+    #setup {
+      align-items: center; justify-content: space-evenly; text-align: center;
+      padding:
+        calc(env(safe-area-inset-top, 44px) + 24px) 24px
+        calc(env(safe-area-inset-bottom, 34px) + 24px);
+    }
+    .s-icon  { font-size: 5rem; }
+    .s-title { font-size: 2rem; font-weight: 700; }
+    .s-sub   { font-size: 0.9rem; color: var(--muted); line-height: 1.65; max-width: 280px; margin-top: 8px; }
+
+    .cta-btn {
+      width: 100%; max-width: 300px; padding: 15px;
+      background: var(--acc); border: none; border-radius: 14px;
+      color: white; font-size: 1rem; font-weight: 700; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sec-btn {
+      width: 100%; max-width: 300px; padding: 12px;
+      background: transparent; border: 1px solid var(--border); border-radius: 14px;
+      color: var(--muted); font-size: 0.9rem; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ghost-btn {
+      padding: 8px 18px; background: transparent; border: 1px solid var(--border);
+      border-radius: 999px; color: var(--muted); font-size: 0.8rem; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── PLAYING CARD TILE ── */
+    .card-tile {
+      background: #f5f0e8; border-radius: 9px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+      position: relative; flex-shrink: 0;
+    }
+    .card-tile.red   { color: var(--red-c); }
+    .card-tile.black { color: #111; }
+
+    .card-corner {
+      position: absolute; top: 5px; left: 6px;
+      font-size: 0.68rem; font-weight: 700; line-height: 1.15; text-align: center;
+    }
+    .card-corner.flip {
+      top: auto; left: auto; bottom: 5px; right: 6px;
+      transform: rotate(180deg);
+    }
+    .c-val  { font-weight: 800; line-height: 1; }
+    .c-suit { line-height: 1; }
+
+    /* ── MEMORIZE ── */
+    #memorize { justify-content: space-between; }
+
+    .mem-topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .mem-title { font-size: 1rem; font-weight: 600; }
+    .mem-pos   { font-size: 0.82rem; color: var(--muted); }
+
+    .mem-row {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .mem-card { flex: 1; max-width: 108px; height: 150px; }
+    .mem-card .c-val  { font-size: 2.2rem; }
+    .mem-card .c-suit { font-size: 2.6rem; margin-top: 3px; }
+    .mem-card .card-corner { font-size: 0.78rem; }
+
+    .mem-nav { display: flex; gap: 10px; align-items: center; }
+    .nav-btn {
+      width: 52px; height: 52px; flex-shrink: 0;
+      background: var(--surf); border: 1px solid var(--border); border-radius: 14px;
+      color: var(--txt); font-size: 1.4rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nav-btn:disabled { opacity: 0.25; cursor: default; }
+    .done-btn {
+      flex: 1; height: 52px;
+      background: var(--acc); border: none; border-radius: 14px;
+      color: white; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── RECALL ── */
+    #recall { justify-content: space-between; }
+
+    .rc-header { text-align: center; margin-bottom: 6px; }
+    .rc-pos  { font-size: 1.05rem; font-weight: 600; }
+
+    .prog-track {
+      height: 4px; background: var(--surf); border-radius: 2px;
+      margin-bottom: 14px; overflow: hidden;
+    }
+    .prog-fill { height: 100%; border-radius: 2px; background: var(--acc); transition: width .2s; }
+
+    /* trail */
+    .trail-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; min-height: 74px; align-items: flex-start; }
+    .trail-slot { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .trail-card { width: 42px; height: 58px; }
+    .trail-card .c-val  { font-size: 1rem; }
+    .trail-card .c-suit { font-size: 1.05rem; margin-top: 1px; }
+    .trail-card .card-corner { font-size: 0.52rem; top: 3px; left: 3px; }
+    .trail-card .card-corner.flip { bottom: 3px; right: 3px; }
+    .trail-lbl { font-size: 0.65rem; color: var(--muted); }
+    .trail-slot.cur .trail-lbl { color: var(--acc); font-weight: 600; }
+
+    .card-ph {
+      width: 42px; height: 58px; border-radius: 9px;
+      border: 2px dashed var(--acc);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--acc); font-size: 1.2rem; font-weight: 700;
+    }
+
+    /* suit selector */
+    .suit-row {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px;
+    }
+    .suit-btn {
+      height: 50px; background: var(--surf); border: 2px solid transparent; border-radius: 12px;
+      font-size: 1.5rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color .12s, background .12s;
+    }
+    .suit-btn.red   { color: var(--red-c); }
+    .suit-btn.black { color: var(--txt); }
+    .suit-btn.on    { border-color: var(--acc); background: rgba(108,111,253,0.12); }
+
+    /* value grid — 4 cols; K auto-centers via JS inline style */
+    .val-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px;
+    }
+    .val-btn {
+      height: 50px; background: var(--surf); border: 2px solid transparent; border-radius: 12px;
+      color: var(--txt); font-size: 1rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .val-btn:active { background: var(--surf2); }
+
+    .rc-footer { display: flex; justify-content: center; gap: 10px; }
+
+    /* ── RESULTS ── */
+    #results {
+      padding:
+        calc(env(safe-area-inset-top, 44px) + 16px) 20px
+        calc(env(safe-area-inset-bottom, 34px) + 24px);
+    }
+    .r-score-area { text-align: center; margin-bottom: 20px; }
+    .r-score { font-size: 3.5rem; font-weight: 700; color: var(--acc); line-height: 1; }
+    .r-denom { font-size: 1rem; color: var(--muted); }
+    .r-pct   { font-size: 0.72rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .cmp-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 0.82rem; }
+    .cmp-table th {
+      color: var(--muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 4px 6px; border-bottom: 1px solid var(--border); font-weight: 500; text-align: left;
+    }
+    .cmp-table td { padding: 5px 6px; border-bottom: 1px solid rgba(61,62,92,0.35); }
+    .cmp-table tr:last-child td { border-bottom: none; }
+    tr.ok  td { background: rgba(74,222,128,0.06); }
+    tr.err td { background: rgba(248,113,113,0.08); }
+    .cn { color: var(--muted); font-size: 0.72rem; }
+    .cc { font-weight: 700; }
+    .cc.red   { color: var(--red-c); }
+    .cc.black { color: var(--txt); }
+    .ci.ok  { color: var(--green); }
+    .ci.err { color: var(--red); }
+
+    .r-btns { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  </style>
+</head>
+<body>
+
+<!-- ═══ SETUP ═══ -->
+<div id="setup" class="screen on">
+  <div class="s-icon">🃏</div>
+  <div>
+    <div class="s-title">Card Memory</div>
+    <div class="s-sub">Memorize the order of a shuffled 52-card deck, then recall every card in sequence.</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;align-items:center">
+    <button class="cta-btn" id="start-btn">Shuffle &amp; Memorize</button>
+  </div>
+</div>
+
+<!-- ═══ MEMORIZE ═══ -->
+<div id="memorize" class="screen gp">
+  <div class="mem-topbar">
+    <span class="mem-title">Memorize</span>
+    <span class="mem-pos" id="mem-pos">1 – 3 of 52</span>
+  </div>
+  <div class="mem-row" id="mem-row"></div>
+  <div>
+    <div class="mem-nav">
+      <button class="nav-btn" id="prev-btn">&#8592;</button>
+      <button class="done-btn" id="done-btn">Done — Test Me</button>
+      <button class="nav-btn" id="next-btn">&#8594;</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RECALL ═══ -->
+<div id="recall" class="screen gp">
+  <div>
+    <div class="rc-header">
+      <div class="rc-pos" id="rc-pos">Card 1 of 52</div>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="trail-row" id="trail-row"></div>
+    <div class="suit-row" id="suit-row"></div>
+    <div class="val-grid"  id="val-grid"></div>
+  </div>
+  <div class="rc-footer">
+    <button class="ghost-btn" id="undo-btn">&#8629; Undo</button>
+    <button class="ghost-btn" id="back-btn">&#8592; Review</button>
+    <button class="ghost-btn" id="quit-btn">Quit</button>
+  </div>
+</div>
+
+<!-- ═══ RESULTS ═══ -->
+<div id="results" class="screen">
+  <div class="r-score-area">
+    <div class="r-score" id="r-score">0</div>
+    <div class="r-denom">/ 52 correct</div>
+    <div class="r-pct" id="r-pct"></div>
+  </div>
+  <table class="cmp-table">
+    <thead><tr><th>#</th><th>Actual</th><th>Your answer</th><th></th></tr></thead>
+    <tbody id="cmp-body"></tbody>
+  </table>
+  <div class="r-btns">
+    <button class="cta-btn" id="again-btn">Shuffle Again</button>
+    <button class="sec-btn" id="home-btn">Back to Setup</button>
+  </div>
+</div>
+
+<script>
+const SUITS  = ['♠', '♥', '♦', '♣'];
+const VALUES = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const PAGES  = Math.ceil(52 / 3); // 18
+
+const $ = id => document.getElementById(id);
+const isRed = s => s === '♥' || s === '♦';
+
+let deck    = [];
+let answers = [];
+let memPage = 0;
+let selSuit = '♠';
+
+// ── DECK ──────────────────────────────────────────────────────────
+function buildShuffled() {
+  deck = [];
+  for (const suit of SUITS)
+    for (const val of VALUES)
+      deck.push({ suit, val });
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+}
+
+// ── UTILITIES ─────────────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  $(id).classList.add('on');
+}
+
+function makeTile(card, extraCls) {
+  const d = document.createElement('div');
+  d.className = `card-tile ${isRed(card.suit) ? 'red' : 'black'}${extraCls ? ' ' + extraCls : ''}`;
+  d.innerHTML = `
+    <div class="card-corner">${card.val}<br>${card.suit}</div>
+    <div class="c-val">${card.val}</div>
+    <div class="c-suit">${card.suit}</div>
+    <div class="card-corner flip">${card.val}<br>${card.suit}</div>`;
+  return d;
+}
+
+// ── MEMORIZE ──────────────────────────────────────────────────────
+function renderMem() {
+  const start = memPage * 3;
+  const slice = deck.slice(start, start + 3);
+  const row   = $('mem-row');
+  row.innerHTML = '';
+
+  for (let i = 0; i < 3; i++) {
+    if (slice[i]) {
+      row.appendChild(makeTile(slice[i], 'mem-card'));
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'mem-card';
+      ph.style.visibility = 'hidden';
+      row.appendChild(ph);
+    }
+  }
+
+  const end = Math.min(start + slice.length, 52);
+  $('mem-pos').textContent = `${start + 1} – ${end} of 52`;
+  $('prev-btn').disabled = memPage === 0;
+  $('next-btn').disabled = memPage >= PAGES - 1;
+}
+
+// ── RECALL SETUP ──────────────────────────────────────────────────
+function startRecall() {
+  answers = [];
+  selSuit = '♠';
+  buildSuitRow();
+  buildValGrid();
+  renderRecall();
+  show('recall');
+}
+
+function buildSuitRow() {
+  const row = $('suit-row');
+  row.innerHTML = '';
+  for (const s of SUITS) {
+    const b = document.createElement('button');
+    b.className = `suit-btn ${isRed(s) ? 'red' : 'black'}${s === selSuit ? ' on' : ''}`;
+    b.textContent = s;
+    b.addEventListener('click', () => {
+      selSuit = s;
+      document.querySelectorAll('.suit-btn').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+    });
+    row.appendChild(b);
+  }
+}
+
+function buildValGrid() {
+  const grid = $('val-grid');
+  grid.innerHTML = '';
+  VALUES.forEach((v, i) => {
+    const b = document.createElement('button');
+    b.className = 'val-btn';
+    b.textContent = v;
+    // K is 13th (index 12); with 4 cols it lands alone in row 4 — center it
+    if (i === 12) {
+      b.style.cssText = 'grid-column: 1 / -1; max-width: 60px; margin: 0 auto;';
+    }
+    b.addEventListener('click', () => enterCard(v));
+    grid.appendChild(b);
+  });
+}
+
+// ── RECALL LOGIC ──────────────────────────────────────────────────
+function enterCard(val) {
+  if (answers.length >= 52) return;
+  answers.push({ suit: selSuit, val });
+  renderRecall();
+  if (answers.length === 52) setTimeout(showResults, 300);
+}
+
+function undoCard() {
+  if (answers.length === 0) return;
+  answers.pop();
+  renderRecall();
+}
+
+function renderRecall() {
+  const n = answers.length;
+  $('rc-pos').textContent    = n < 52 ? `Card ${n + 1} of 52` : 'All cards entered!';
+  $('prog-fill').style.width = (n / 52 * 100) + '%';
+  renderTrail();
+}
+
+function renderTrail() {
+  const row = $('trail-row');
+  row.innerHTML = '';
+  const n     = answers.length;
+  const start = Math.max(0, n - 2); // show last 2 entered
+
+  for (let i = start; i < n; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'trail-slot';
+    const tile = makeTile(answers[i], 'trail-card');
+    if (i < n - 1) tile.style.opacity = '0.35';
+    const lbl = document.createElement('div');
+    lbl.className = 'trail-lbl';
+    lbl.textContent = '#' + (i + 1);
+    slot.appendChild(tile);
+    slot.appendChild(lbl);
+    row.appendChild(slot);
+  }
+
+  if (n < 52) {
+    const slot = document.createElement('div');
+    slot.className = 'trail-slot cur';
+    const ph = document.createElement('div');
+    ph.className = 'card-ph';
+    ph.textContent = '?';
+    const lbl = document.createElement('div');
+    lbl.className = 'trail-lbl';
+    lbl.textContent = '#' + (n + 1);
+    slot.appendChild(ph);
+    slot.appendChild(lbl);
+    row.appendChild(slot);
+  }
+}
+
+// ── RESULTS ───────────────────────────────────────────────────────
+function showResults() {
+  let correct = 0;
+  const tbody = $('cmp-body');
+  tbody.innerHTML = '';
+
+  for (let i = 0; i < 52; i++) {
+    const actual = deck[i];
+    const given  = answers[i] || { suit: '?', val: '?' };
+    const ok     = actual.val === given.val && actual.suit === given.suit;
+    if (ok) correct++;
+
+    const tr = document.createElement('tr');
+    tr.className = ok ? 'ok' : 'err';
+    tr.innerHTML = `
+      <td class="cn">${i + 1}</td>
+      <td class="cc ${isRed(actual.suit) ? 'red' : 'black'}">${actual.val}${actual.suit}</td>
+      <td class="cc ${isRed(given.suit)  ? 'red' : 'black'}">${given.val}${given.suit}</td>
+      <td class="ci ${ok ? 'ok' : 'err'}">${ok ? '✓' : '✗'}</td>`;
+    tbody.appendChild(tr);
+  }
+
+  $('r-score').textContent = correct;
+  $('r-pct').textContent   = Math.round(correct / 52 * 100) + '% accuracy';
+  show('results');
+}
+
+// ── WIRING ────────────────────────────────────────────────────────
+$('start-btn').addEventListener('click', () => {
+  buildShuffled();
+  memPage = 0;
+  renderMem();
+  show('memorize');
+});
+
+$('prev-btn').addEventListener('click', () => { memPage--; renderMem(); });
+$('next-btn').addEventListener('click', () => { memPage++; renderMem(); });
+$('done-btn').addEventListener('click', startRecall);
+
+$('undo-btn').addEventListener('click', undoCard);
+$('back-btn').addEventListener('click', () => { renderMem(); show('memorize'); });
+$('quit-btn').addEventListener('click', () => show('setup'));
+
+$('again-btn').addEventListener('click', () => {
+  buildShuffled();
+  memPage = 0;
+  renderMem();
+  show('memorize');
+});
+$('home-btn').addEventListener('click', () => show('setup'));
+
+// ── SERVICE WORKER ────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

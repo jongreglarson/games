@@ -1,0 +1,11 @@
+{
+  "name": "Card Memory",
+  "short_name": "Card Memory",
+  "description": "Memorize the order of a shuffled 52-card deck",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#12131f",
+  "theme_color": "#12131f"
+}
