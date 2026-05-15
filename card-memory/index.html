@@ -395,8 +395,17 @@
     <button class="hist-back" id="hist-back-btn">&#8592;</button>
     <span class="hist-title">History</span>
   </div>
+  <div class="hist-list-title">Memorize Time Over Sessions</div>
   <div class="hist-canvas-wrap">
     <canvas id="hist-chart" height="200"></canvas>
+  </div>
+  <div class="hist-list-title">Avg Time by Journey</div>
+  <div class="hist-canvas-wrap">
+    <canvas id="hist-journey-chart"></canvas>
+  </div>
+  <div class="hist-list-title">Avg Time by Hour of Day</div>
+  <div class="hist-canvas-wrap">
+    <canvas id="hist-hour-chart" height="200"></canvas>
   </div>
   <div class="hist-list-title">All Sessions</div>
   <div id="hist-list"></div>
@@ -710,7 +719,11 @@ function showHistory() {
   const sessions = loadSessions().slice().sort((a, b) => a.completedAt - b.completedAt);
   show('history');
   renderHistList(sessions);
-  requestAnimationFrame(() => drawHistChart(sessions));
+  requestAnimationFrame(() => {
+    drawHistChart(sessions);
+    drawJourneyChart(sessions);
+    drawHourChart(sessions);
+  });
 }
 
 function drawHistChart(sessions) {
@@ -805,6 +818,154 @@ function drawHistChart(sessions) {
     ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
     ctx.fillStyle   = '#6c6ffd'; ctx.fill();
     ctx.strokeStyle = '#12131f'; ctx.lineWidth = 2; ctx.stroke();
+  });
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  if (w < 2 * r) r = w / 2;
+  if (h < 2 * r) r = h / 2;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);  ctx.quadraticCurveTo(x + w, y,     x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);  ctx.quadraticCurveTo(x,     y + h, x,     y + h - r);
+  ctx.lineTo(x, y + r);      ctx.quadraticCurveTo(x,     y,     x + r, y);
+  ctx.closePath();
+}
+
+function fmtSec(s) {
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+function drawJourneyChart(sessions) {
+  const map = {};
+  sessions.forEach(s => {
+    if (!map[s.journey]) map[s.journey] = { sum: 0, n: 0 };
+    map[s.journey].sum += s.memorizeSeconds || 0;
+    map[s.journey].n   += 1;
+  });
+
+  const data = Object.entries(map)
+    .map(([name, { sum, n }]) => ({ name, avg: Math.round(sum / n) }))
+    .sort((a, b) => a.avg - b.avg);
+
+  const canvas = $('hist-journey-chart');
+  const wrap   = canvas.parentElement;
+  const dpr    = window.devicePixelRatio || 1;
+  const W      = wrap.clientWidth - 32;
+  const ROW_H  = 40;
+  const pad    = { top: 8, right: 56, bottom: 8, left: 110 };
+  const H      = Math.max(60, data.length * ROW_H + pad.top + pad.bottom);
+
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width        = W * dpr;
+  canvas.height       = H * dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#1e1f32';
+  ctx.fillRect(0, 0, W, H);
+
+  if (data.length === 0) {
+    ctx.fillStyle = '#8b8ca8'; ctx.font = '13px -apple-system, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('No sessions yet', W / 2, H / 2);
+    return;
+  }
+
+  const cW    = W - pad.left - pad.right;
+  const maxV  = data[data.length - 1].avg || 1;
+  const BH    = ROW_H - 10;
+
+  data.forEach((d, i) => {
+    const bY  = pad.top + i * ROW_H + (ROW_H - BH) / 2;
+    const bW  = Math.max(4, (d.avg / maxV) * cW);
+
+    ctx.fillStyle = '#6c6ffd';
+    roundRect(ctx, pad.left, bY, bW, BH, 5);
+    ctx.fill();
+
+    // Name
+    ctx.fillStyle = '#e2e2f0'; ctx.font = '12px -apple-system, sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    const lbl = d.name.length > 14 ? d.name.slice(0, 13) + '…' : d.name;
+    ctx.fillText(lbl, pad.left - 8, bY + BH / 2);
+
+    // Value
+    ctx.fillStyle = '#a5a6ff'; ctx.textAlign = 'left';
+    ctx.fillText(fmtSec(d.avg), pad.left + bW + 6, bY + BH / 2);
+  });
+}
+
+function drawHourChart(sessions) {
+  const map = {};
+  sessions.forEach(s => {
+    const h = new Date(s.completedAt).getHours();
+    if (!map[h]) map[h] = { sum: 0, n: 0 };
+    map[h].sum += s.memorizeSeconds || 0;
+    map[h].n   += 1;
+  });
+
+  const hours = Object.keys(map).map(Number).sort((a, b) => a - b);
+  const data  = hours.map(h => ({ hour: h, avg: Math.round(map[h].sum / map[h].n) }));
+
+  const canvas = $('hist-hour-chart');
+  const wrap   = canvas.parentElement;
+  const dpr    = window.devicePixelRatio || 1;
+  const W      = wrap.clientWidth - 32;
+  const H      = 200;
+
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width        = W * dpr;
+  canvas.height       = H * dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#1e1f32';
+  ctx.fillRect(0, 0, W, H);
+
+  if (data.length === 0) {
+    ctx.fillStyle = '#8b8ca8'; ctx.font = '13px -apple-system, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('No sessions yet', W / 2, H / 2);
+    return;
+  }
+
+  const pad   = { top: 16, right: 16, bottom: 36, left: 52 };
+  const cW    = W - pad.left - pad.right;
+  const cH    = H - pad.top  - pad.bottom;
+  const maxV  = Math.max(...data.map(d => d.avg)) || 1;
+  const n     = data.length;
+  const step  = n > 1 ? cW / (n - 1) : cW;
+  const barW  = Math.max(6, Math.min(28, step * 0.6));
+
+  // Y grid
+  ctx.strokeStyle = '#3d3e5c'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + cH - (i / 4) * cH;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
+    ctx.fillStyle = '#8b8ca8'; ctx.font = '11px -apple-system, sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(Math.round((i / 4) * maxV) + 's', pad.left - 6, y);
+  }
+
+  // Bars + labels
+  data.forEach((d, i) => {
+    const x  = n > 1 ? pad.left + i * step : pad.left + cW / 2;
+    const bH = Math.max(4, (d.avg / maxV) * cH);
+    const bY = pad.top + cH - bH;
+
+    ctx.fillStyle = '#6c6ffd';
+    roundRect(ctx, x - barW / 2, bY, barW, bH, 4);
+    ctx.fill();
+
+    ctx.fillStyle = '#8b8ca8'; ctx.font = '10px -apple-system, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    const h   = d.hour;
+    const lbl = h === 0 ? '12a' : h < 12 ? h + 'a' : h === 12 ? '12p' : (h - 12) + 'p';
+    ctx.fillText(lbl, x, pad.top + cH + 6);
   });
 }
 
