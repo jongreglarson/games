@@ -49,6 +49,7 @@
         calc(env(safe-area-inset-top, 44px) + 8px)
         20px
         calc(env(safe-area-inset-bottom, 34px) + 6px);
+      justify-content: space-between;
     }
 
     .navbar {
@@ -133,7 +134,7 @@
     .diff-row {
       display: flex; gap: 8px; margin-bottom: 0;
       overflow-x: auto; padding-bottom: 2px;
-      scrollbar-width: none;
+      scrollbar-width: none; justify-content: center;
     }
     .diff-row::-webkit-scrollbar { display: none; }
     .pill {
@@ -146,7 +147,7 @@
     .pill.on { border-color: var(--acc); color: var(--acc-lt); font-weight: 600; }
 
     .start-btn {
-      margin-top: auto; padding: 14px;
+      padding: 14px;
       background: none; border: none;
       color: var(--acc); font-size: 1.1rem; font-weight: 700;
       letter-spacing: 0.1em; cursor: pointer;
@@ -161,17 +162,18 @@
         calc(env(safe-area-inset-top, 44px) + 8px)
         20px
         calc(env(safe-area-inset-bottom, 34px) + 8px);
+      overflow: hidden;
     }
 
     .game-top {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .game-info { font-size: 0.85rem; color: var(--muted); }
 
     .timer-track {
       height: 4px; background: var(--surf); border-radius: 2px;
-      margin-bottom: 16px; overflow: hidden;
+      margin-bottom: 10px; overflow: hidden;
     }
     .timer-fill {
       height: 100%; border-radius: 2px; background: var(--acc);
@@ -180,7 +182,7 @@
 
     .problem-area {
       flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 14px;
+      align-items: center; justify-content: center; gap: 10px;
     }
 
     .problem-eq {
@@ -284,7 +286,7 @@
   <div class="navbar">
     <button class="icon-btn">&#8592;</button>
     <span class="nav-title">Basic Operations</span>
-    <button class="icon-btn">&#128276;</button>
+    <div style="width:36px"></div>
   </div>
 
   <div id="stats-bar">
@@ -544,13 +546,12 @@ function startGame() {
   startTicker();
   show('game');
   nextQ();
-  setTimeout(() => $('answer-inp').focus(), 350);
 }
 
 function startTicker() {
   updateBar();
   gs.ticker = setInterval(() => {
-    gs.timeLeft -= 0.1;
+    gs.timeLeft = TIME_SEC - (Date.now() - gs.t0) / 1000;
     updateBar();
     $('g-prog').textContent = Math.ceil(Math.max(0, gs.timeLeft)) + 's';
     if (gs.timeLeft <= 0) { clearInterval(gs.ticker); endGame(); }
@@ -581,7 +582,7 @@ function nextQ() {
   $('g-prog').textContent     = Math.ceil(Math.max(0, gs.timeLeft)) + 's';
   $('g-score').textContent    = gs.correct;
   $('problem-eq').textContent = problemText(gs.cur);
-  inp.focus();
+  setTimeout(() => inp.focus(), 0);
 }
 
 function checkAnswer() {
@@ -604,10 +605,10 @@ function checkAnswer() {
     showStreak();
     gs.wrongCnt++;
     inp.className = 'answer-inp err';
+    if (gs.wrongCnt === 1 && !cfg.missedMode) addMissed(gs.cur);
 
     if (gs.wrongCnt >= 3) {
       setHint(`✗  Answer: ${fmt(gs.cur.ans)}`, 'err');
-      if (!cfg.missedMode) addMissed(gs.cur);
       setTimeout(() => { gs.attempts++; nextQ(); }, 1500);
     } else {
       setHint(`✗ Try again (${3 - gs.wrongCnt} left)`, 'err');
