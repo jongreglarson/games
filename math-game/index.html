@@ -672,20 +672,29 @@ $('settings-btn').addEventListener('click', () => { refreshMissedUI(); refreshSt
 $('check-btn').addEventListener('click', checkAnswer);
 $('quit-btn').addEventListener('click', endGame);
 
-$('skip-btn').addEventListener('click', () => {
+function doSkip() {
   if (!cfg.missedMode) addMissed(gs.cur);
   gs.attempts++;
   gs.streak = 0;
   showStreak();
   nextQ();
-});
+}
+$('skip-btn').addEventListener('click', doSkip);
+
+// On iOS, focus() only works during a user gesture. touchend qualifies;
+// preventDefault stops the subsequent click from double-firing.
+function addIosTap(btn, fn) {
+  btn.addEventListener('touchend', e => {
+    e.preventDefault();
+    $('answer-inp').focus();
+    fn();
+  }, { passive: false });
+}
+addIosTap($('check-btn'), checkAnswer);
+addIosTap($('skip-btn'), doSkip);
 
 $('answer-inp').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); checkAnswer(); }
-});
-
-$('answer-inp').addEventListener('blur', () => {
-  if (gs.cur) $('answer-inp').focus();
 });
 
 // ── iOS INSTALL BANNER ───────────────────────────────────────────
