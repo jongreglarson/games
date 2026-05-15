@@ -147,6 +147,25 @@
     }
     .timer-btn.running { border-color: var(--red); color: var(--red); }
 
+    .journey-row { margin-bottom: 8px; }
+    .journey-sel-wrap { position: relative; }
+    .journey-sel {
+      width: 100%; padding: 9px 30px 9px 12px;
+      background: var(--surf); border: 1px solid var(--border); border-radius: 10px;
+      color: var(--txt); font-size: 0.88rem;
+      -webkit-appearance: none; appearance: none; cursor: pointer;
+    }
+    .journey-arrow {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: 0.8rem; pointer-events: none;
+    }
+    .journey-inp {
+      width: 100%; padding: 9px 12px; margin-top: 6px;
+      background: var(--surf); border: 1px solid var(--border); border-radius: 10px;
+      color: var(--txt); font-size: 0.88rem; outline: none;
+    }
+    .journey-inp:focus { border-color: var(--acc); }
+
     /* ── RECALL ── */
     #recall { justify-content: space-between; }
 
@@ -272,6 +291,15 @@
     <span class="mem-title">Memorize</span>
     <span class="mem-pos" id="mem-pos">1 – 3 of 52</span>
   </div>
+  <div class="journey-row">
+    <div class="journey-sel-wrap">
+      <select id="journey-sel" class="journey-sel">
+        <option value="__new__">+ New journey&hellip;</option>
+      </select>
+      <span class="journey-arrow">&#9660;</span>
+    </div>
+    <input id="journey-inp" class="journey-inp" type="text" placeholder="Journey name&hellip;" />
+  </div>
   <div class="mem-timer-row">
     <span class="timer-disp" id="timer-disp">0:00</span>
     <button class="timer-btn" id="timer-btn">&#9654; Start</button>
@@ -340,6 +368,75 @@ let memPage   = 0;
 let selSuit   = '♠';
 let viewGroup = 0;
 
+// ── JOURNEY / SESSION STORAGE ─────────────────────────────────────
+const JOURNEYS_KEY = 'card-memory-journeys';
+const SESSIONS_KEY = 'card-memory-sessions';
+
+function loadJourneys() {
+  try { return JSON.parse(localStorage.getItem(JOURNEYS_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveJourneys(a) { localStorage.setItem(JOURNEYS_KEY, JSON.stringify(a)); }
+
+function loadSessions() {
+  try { return JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveSessions(a) { localStorage.setItem(SESSIONS_KEY, JSON.stringify(a)); }
+
+function populateJourneySelect() {
+  const sel      = $('journey-sel');
+  const prev     = sel.value;
+  // Sort ascending by lastUsed = least recent first → most recent last
+  const journeys = loadJourneys().sort((a, b) => a.lastUsed - b.lastUsed);
+
+  sel.innerHTML = '<option value="__new__">+ New journey…</option>';
+  journeys.forEach(j => {
+    const o = document.createElement('option');
+    o.value = o.textContent = j.name;
+    sel.appendChild(o);
+  });
+
+  // Restore previous selection; otherwise default to most recently used
+  if (prev && prev !== '__new__' && [...sel.options].some(o => o.value === prev)) {
+    sel.value = prev;
+  } else if (journeys.length > 0) {
+    sel.value = journeys[journeys.length - 1].name;
+  }
+  updateJourneyVis();
+}
+
+function updateJourneyVis() {
+  $('journey-inp').style.display = $('journey-sel').value === '__new__' ? '' : 'none';
+}
+
+function getCurrentJourney() {
+  const sel = $('journey-sel');
+  return sel.value === '__new__'
+    ? ($('journey-inp').value.trim() || 'Untitled Journey')
+    : sel.value;
+}
+
+function recordSession(name, secs) {
+  const now      = Date.now();
+  const journeys = loadJourneys();
+  const existing = journeys.find(j => j.name === name);
+  if (existing) { existing.lastUsed = now; }
+  else          { journeys.push({ name, lastUsed: now }); }
+  saveJourneys(journeys);
+
+  const m = Math.floor(secs / 60), s = secs % 60;
+  const sessions = loadSessions();
+  sessions.push({
+    journey:         name,
+    memorizeTime:    m + ':' + String(s).padStart(2, '0'),
+    memorizeSeconds: secs,
+    completedAt:     now,
+  });
+  saveSessions(sessions);
+}
+
+// ── TIMER ─────────────────────────────────────────────────────────
 let timerSec     = 0;
 let timerRunning = false;
 let timerIval    = null;
@@ -559,6 +656,7 @@ $('start-btn').addEventListener('click', () => {
   buildShuffled();
   memPage = 0;
   resetTimer();
+  populateJourneySelect();
   renderMem();
   show('memorize');
 });
@@ -569,7 +667,13 @@ $('timer-btn').addEventListener('click', () => {
 
 $('prev-btn').addEventListener('click', () => { memPage--; renderMem(); });
 $('next-btn').addEventListener('click', () => { memPage++; renderMem(); });
-$('done-btn').addEventListener('click', () => { stopTimer(); startRecall(); });
+$('journey-sel').addEventListener('change', updateJourneyVis);
+
+$('done-btn').addEventListener('click', () => {
+  recordSession(getCurrentJourney(), timerSec);
+  stopTimer();
+  startRecall();
+});
 
 $('undo-btn').addEventListener('click', undoCard);
 $('back-btn').addEventListener('click', () => { renderMem(); show('memorize'); });
@@ -581,10 +685,14 @@ $('again-btn').addEventListener('click', () => {
   buildShuffled();
   memPage = 0;
   resetTimer();
+  populateJourneySelect();
   renderMem();
   show('memorize');
 });
 $('home-btn').addEventListener('click', () => show('setup'));
+
+// ── INIT ──────────────────────────────────────────────────────────
+populateJourneySelect();
 
 // ── SERVICE WORKER ────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
