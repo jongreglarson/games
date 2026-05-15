@@ -1,4 +1,4 @@
-const V = 'card-memory-v6';
+const V = 'card-memory-v7';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e =>

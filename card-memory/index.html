@@ -269,6 +269,39 @@
     .ci.err { color: var(--red); }
 
     .r-btns { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+
+    /* ── HISTORY ── */
+    #history {
+      padding:
+        calc(env(safe-area-inset-top, 44px) + 16px) 20px
+        calc(env(safe-area-inset-bottom, 34px) + 24px);
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+    }
+    .hist-topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .hist-back {
+      background: none; border: none; color: var(--acc); font-size: 1.1rem; cursor: pointer;
+      padding: 4px 0; -webkit-tap-highlight-color: transparent;
+    }
+    .hist-title { font-size: 1.1rem; font-weight: 700; }
+    .hist-canvas-wrap {
+      background: var(--surf); border-radius: 14px; padding: 16px; margin-bottom: 20px;
+    }
+    #hist-chart { display: block; width: 100%; }
+    .hist-list-title {
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); margin-bottom: 10px;
+    }
+    .hist-empty { text-align: center; color: var(--muted); font-size: 0.9rem; padding: 40px 0; }
+    .hist-entry {
+      background: var(--surf); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .hist-entry-left { display: flex; flex-direction: column; gap: 2px; }
+    .hist-entry-journey { font-size: 0.88rem; font-weight: 600; }
+    .hist-entry-date    { font-size: 0.72rem; color: var(--muted); }
+    .hist-entry-right   { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .hist-entry-time    { font-size: 1rem; font-weight: 700; color: var(--acc); }
+    .hist-entry-acc     { font-size: 0.72rem; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -282,6 +315,7 @@
   </div>
   <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;align-items:center">
     <button class="cta-btn" id="start-btn">Shuffle &amp; Memorize</button>
+    <button class="ghost-btn" id="hist-btn-setup">History</button>
   </div>
 </div>
 
@@ -351,7 +385,21 @@
   <div class="r-btns">
     <button class="cta-btn" id="again-btn">Shuffle Again</button>
     <button class="sec-btn" id="home-btn">Back to Setup</button>
+    <button class="ghost-btn" id="hist-btn-results">History</button>
   </div>
+</div>
+
+<!-- ═══ HISTORY ═══ -->
+<div id="history" class="screen">
+  <div class="hist-topbar">
+    <button class="hist-back" id="hist-back-btn">&#8592;</button>
+    <span class="hist-title">History</span>
+  </div>
+  <div class="hist-canvas-wrap">
+    <canvas id="hist-chart" height="200"></canvas>
+  </div>
+  <div class="hist-list-title">All Sessions</div>
+  <div id="hist-list"></div>
 </div>
 
 <script>
@@ -657,6 +705,135 @@ function showResults() {
   show('results');
 }
 
+// ── HISTORY ───────────────────────────────────────────────────────
+function showHistory() {
+  const sessions = loadSessions().slice().sort((a, b) => a.completedAt - b.completedAt);
+  show('history');
+  renderHistList(sessions);
+  requestAnimationFrame(() => drawHistChart(sessions));
+}
+
+function drawHistChart(sessions) {
+  const canvas = $('hist-chart');
+  const wrap   = canvas.parentElement;
+  const dpr    = window.devicePixelRatio || 1;
+  const W      = wrap.clientWidth - 32;
+  const H      = 200;
+
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width        = W * dpr;
+  canvas.height       = H * dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#1e1f32';
+  ctx.fillRect(0, 0, W, H);
+
+  if (sessions.length === 0) {
+    ctx.fillStyle = '#8b8ca8';
+    ctx.font = '14px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No sessions yet', W / 2, H / 2);
+    return;
+  }
+
+  const pad  = { top: 16, right: 16, bottom: 40, left: 52 };
+  const cW   = W - pad.left - pad.right;
+  const cH   = H - pad.top  - pad.bottom;
+
+  const secs = sessions.map(s => s.memorizeSeconds || 0);
+  const minS = Math.min(...secs);
+  const maxS = Math.max(...secs);
+  const rng  = maxS - minS || 1;
+
+  const times = sessions.map(s => s.completedAt);
+  const minT  = times[0];
+  const maxT  = times[times.length - 1];
+  const tRng  = maxT - minT || 1;
+
+  // Grid lines
+  ctx.strokeStyle = '#3d3e5c';
+  ctx.lineWidth   = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + cH - (i / 4) * cH;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cW, y); ctx.stroke();
+    const val = Math.round(minS + (i / 4) * rng);
+    ctx.fillStyle = '#8b8ca8';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(val + 's', pad.left - 6, y + 4);
+  }
+
+  // X date labels
+  const nLabels = Math.min(sessions.length, 4);
+  ctx.fillStyle = '#8b8ca8';
+  ctx.font      = '10px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < nLabels; i++) {
+    const idx = Math.round(i / (nLabels - 1 || 1) * (sessions.length - 1));
+    const x   = pad.left + (sessions.length > 1 ? (times[idx] - minT) / tRng * cW : cW / 2);
+    const d   = new Date(times[idx]);
+    ctx.fillText((d.getMonth() + 1) + '/' + d.getDate(), x, H - 10);
+  }
+
+  // Points
+  const pts = sessions.map((s, i) => ({
+    x: pad.left + (sessions.length > 1 ? (times[i] - minT) / tRng * cW : cW / 2),
+    y: pad.top  + cH - (secs[i] - minS) / rng * cH,
+  }));
+
+  // Fill under line
+  ctx.fillStyle = 'rgba(108,111,253,0.12)';
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pad.top + cH);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length - 1].x, pad.top + cH);
+  ctx.closePath();
+  ctx.fill();
+
+  // Line
+  ctx.strokeStyle = '#6c6ffd';
+  ctx.lineWidth   = 2.5;
+  ctx.lineJoin    = 'round';
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.stroke();
+
+  // Dots
+  pts.forEach(p => {
+    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle   = '#6c6ffd'; ctx.fill();
+    ctx.strokeStyle = '#12131f'; ctx.lineWidth = 2; ctx.stroke();
+  });
+}
+
+function renderHistList(sessions) {
+  const el = $('hist-list');
+  el.innerHTML = '';
+  if (sessions.length === 0) {
+    el.innerHTML = '<div class="hist-empty">No sessions recorded yet.</div>';
+    return;
+  }
+  [...sessions].reverse().forEach(s => {
+    const d   = new Date(s.completedAt);
+    const lbl = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const t   = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    const div = document.createElement('div');
+    div.className = 'hist-entry';
+    div.innerHTML = `
+      <div class="hist-entry-left">
+        <div class="hist-entry-journey">${s.journey}</div>
+        <div class="hist-entry-date">${lbl} · ${t}</div>
+      </div>
+      <div class="hist-entry-right">
+        <div class="hist-entry-time">${s.memorizeTime}</div>
+        <div class="hist-entry-acc">${s.accuracy}</div>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+
 // ── WIRING ────────────────────────────────────────────────────────
 $('start-btn').addEventListener('click', () => {
   buildShuffled();
@@ -687,6 +864,10 @@ $('back-btn').addEventListener('click', () => { renderMem(); show('memorize'); }
 $('trail-prev').addEventListener('click', () => { viewGroup--; renderTrail(); });
 $('trail-next').addEventListener('click', () => { viewGroup++; renderTrail(); });
 $('quit-btn').addEventListener('click', () => show('setup'));
+
+$('hist-btn-setup').addEventListener('click', showHistory);
+$('hist-btn-results').addEventListener('click', showHistory);
+$('hist-back-btn').addEventListener('click', () => show('setup'));
 
 $('again-btn').addEventListener('click', () => {
   buildShuffled();
