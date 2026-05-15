@@ -362,11 +362,13 @@ const PAGES  = Math.ceil(52 / 3); // 18
 const $ = id => document.getElementById(id);
 const isRed = s => s === '♥' || s === '♦';
 
-let deck      = [];
-let answers   = [];
-let memPage   = 0;
-let selSuit   = '♠';
-let viewGroup = 0;
+let deck           = [];
+let answers        = [];
+let memPage        = 0;
+let selSuit        = '♠';
+let viewGroup      = 0;
+let pendingJourney = '';
+let pendingSecs    = 0;
 
 // ── JOURNEY / SESSION STORAGE ─────────────────────────────────────
 const JOURNEYS_KEY = 'card-memory-journeys';
@@ -417,7 +419,7 @@ function getCurrentJourney() {
     : sel.value;
 }
 
-function recordSession(name, secs) {
+function recordSession(name, secs, correct) {
   const now      = Date.now();
   const journeys = loadJourneys();
   const existing = journeys.find(j => j.name === name);
@@ -431,6 +433,8 @@ function recordSession(name, secs) {
     journey:         name,
     memorizeTime:    m + ':' + String(s).padStart(2, '0'),
     memorizeSeconds: secs,
+    correct,
+    accuracy:        Math.round(correct / 52 * 100) + '%',
     completedAt:     now,
   });
   saveSessions(sessions);
@@ -646,6 +650,8 @@ function showResults() {
     tbody.appendChild(tr);
   }
 
+  recordSession(pendingJourney, pendingSecs, correct);
+
   $('r-score').textContent = correct;
   $('r-pct').textContent   = Math.round(correct / 52 * 100) + '% accuracy';
   show('results');
@@ -670,7 +676,8 @@ $('next-btn').addEventListener('click', () => { memPage++; renderMem(); });
 $('journey-sel').addEventListener('change', updateJourneyVis);
 
 $('done-btn').addEventListener('click', () => {
-  recordSession(getCurrentJourney(), timerSec);
+  pendingJourney = getCurrentJourney();
+  pendingSecs    = timerSec;
   stopTimer();
   startRecall();
 });
