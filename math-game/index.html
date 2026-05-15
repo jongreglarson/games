@@ -39,9 +39,10 @@
     .screen {
       display: none; flex-direction: column;
       height: 100vh; height: -webkit-fill-available;
-      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      overflow: hidden;
     }
     .screen.on { display: flex; }
+    #setup, #results { overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
     /* ── SETUP ── */
     #setup {
@@ -159,10 +160,9 @@
     /* ── GAME ── */
     #game {
       padding:
-        calc(env(safe-area-inset-top, 44px) + 8px)
+        calc(env(safe-area-inset-top, 44px) + 4px)
         20px
-        calc(env(safe-area-inset-bottom, 34px) + 8px);
-      overflow: hidden;
+        calc(env(safe-area-inset-bottom, 34px) + 4px);
     }
 
     .game-top {
@@ -546,6 +546,7 @@ function startGame() {
   startTicker();
   show('game');
   nextQ();
+  $('answer-inp').focus();
 }
 
 function startTicker() {
@@ -582,7 +583,6 @@ function nextQ() {
   $('g-prog').textContent     = Math.ceil(Math.max(0, gs.timeLeft)) + 's';
   $('g-score').textContent    = gs.correct;
   $('problem-eq').textContent = problemText(gs.cur);
-  setTimeout(() => inp.focus(), 0);
 }
 
 function checkAnswer() {
@@ -682,6 +682,10 @@ $('skip-btn').addEventListener('click', () => {
 
 $('answer-inp').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); checkAnswer(); }
+});
+
+$('answer-inp').addEventListener('blur', () => {
+  if (gs.cur) $('answer-inp').focus();
 });
 
 // ── iOS INSTALL BANNER ───────────────────────────────────────────
