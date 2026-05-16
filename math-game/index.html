@@ -612,6 +612,7 @@ function checkAnswer() {
 
   if (num === gs.cur.ans) {
     gs.correct++;
+    gs.attempts++;
     gs.streak++;
     gs.bestStreak = Math.max(gs.bestStreak, gs.streak);
     const pts  = pointsForProblem(gs.cur.ans, gs.streak);
@@ -621,7 +622,7 @@ function checkAnswer() {
     showStreak();
     $('g-score').textContent = gs.score;
     if (cfg.missedMode) removeMissed(gs.cur);
-    setTimeout(() => { gs.attempts++; nextQ(); }, 700);
+    setTimeout(() => { nextQ(); }, 700);
   } else {
     gs.streak = 0;
     showStreak();
@@ -630,8 +631,9 @@ function checkAnswer() {
     if (gs.wrongCnt === 1 && !cfg.missedMode) addMissed(gs.cur);
 
     if (gs.wrongCnt >= 3) {
+      gs.attempts++;
       setHint(`✗  Answer: ${fmt(gs.cur.ans)}`, 'err');
-      setTimeout(() => { gs.attempts++; nextQ(); }, 1500);
+      setTimeout(() => { nextQ(); }, 1500);
     } else {
       setHint(`✗ Try again (${3 - gs.wrongCnt} left)`, 'err');
       inp.value = '';
