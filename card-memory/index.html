@@ -148,8 +148,33 @@
     .timer-btn.running { border-color: var(--red); color: var(--red); }
 
     .journey-row { margin-bottom: 8px; }
-    .journey-inp {
+    .journey-trigger {
       width: 100%; padding: 9px 12px;
+      background: var(--surf); border: 1px solid var(--border); border-radius: 10px;
+      color: var(--txt); font-size: 0.88rem; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      -webkit-tap-highlight-color: transparent; user-select: none;
+    }
+    .journey-caret { color: var(--muted); font-size: 0.75rem; margin-left: 8px; flex-shrink: 0; }
+    .journey-drop {
+      position: fixed;
+      background: var(--surf2); border: 1px solid var(--border); border-radius: 10px;
+      z-index: 200; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      max-height: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+    .journey-opt {
+      padding: 11px 14px; cursor: pointer; font-size: 0.88rem;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid var(--border);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .journey-opt:last-child { border-bottom: none; }
+    .journey-opt:active { background: var(--surf); }
+    .journey-opt-date { font-size: 0.72rem; color: var(--muted); white-space: nowrap; margin-left: 8px; }
+    .journey-new-opt { color: var(--acc); justify-content: center; font-weight: 600; }
+    .journey-backdrop { position: fixed; inset: 0; z-index: 199; }
+    .journey-inp {
+      width: 100%; padding: 9px 12px; margin-top: 6px;
       background: var(--surf); border: 1px solid var(--border); border-radius: 10px;
       color: var(--txt); font-size: 0.88rem; outline: none;
     }
@@ -315,9 +340,14 @@
     <span class="mem-pos" id="mem-pos">1 – 3 of 52</span>
   </div>
   <div class="journey-row">
-    <input id="journey-inp" class="journey-inp" list="journey-datalist"
-           type="text" placeholder="Journey name&hellip;" autocomplete="off" />
-    <datalist id="journey-datalist"></datalist>
+    <div class="journey-trigger" id="journey-trigger">
+      <span id="journey-label">Select journey&hellip;</span>
+      <span class="journey-caret">&#9660;</span>
+    </div>
+    <div class="journey-drop" id="journey-drop" hidden></div>
+    <div class="journey-backdrop" id="journey-backdrop" hidden></div>
+    <input id="journey-inp" class="journey-inp" type="text"
+           placeholder="New journey name&hellip;" autocomplete="off" style="display:none" />
   </div>
   <div class="mem-timer-row">
     <span class="timer-disp" id="timer-disp">0:00</span>
@@ -429,27 +459,77 @@ function loadSessions() {
 }
 function saveSessions(a) { localStorage.setItem(SESSIONS_KEY, JSON.stringify(a)); }
 
-function populateJourneyList() {
-  const inp      = $('journey-inp');
-  const dl       = $('journey-datalist');
-  // Most recently used first in the suggestion list
-  const journeys = loadJourneys().sort((a, b) => b.lastUsed - a.lastUsed);
+let currentJourneyIsNew = false;
 
-  dl.innerHTML = '';
+function populateJourneyList() {
+  const drop     = $('journey-drop');
+  const journeys = loadJourneys().sort((a, b) => a.lastUsed - b.lastUsed); // oldest first
+
+  drop.innerHTML = '';
   journeys.forEach(j => {
-    const opt  = document.createElement('option');
-    opt.value  = j.name;
-    const d    = new Date(j.lastUsed);
-    opt.label  = j.name + '  (' + (d.getMonth() + 1) + '/' + d.getDate() + '/' + String(d.getFullYear()).slice(2) + ')';
-    dl.appendChild(opt);
+    const opt = document.createElement('div');
+    opt.className = 'journey-opt';
+    const d  = new Date(j.lastUsed);
+    const ds = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    opt.innerHTML = `<span>${j.name}</span><span class="journey-opt-date">${ds}</span>`;
+    opt.addEventListener('click', () => pickJourney(j.name));
+    drop.appendChild(opt);
   });
 
-  const target = lastJourneyName || (journeys.length ? journeys[0].name : '');
-  if (target) inp.value = target;
+  const newOpt = document.createElement('div');
+  newOpt.className = 'journey-opt journey-new-opt';
+  newOpt.textContent = '+ Enter new name';
+  newOpt.addEventListener('click', activateNewJourney);
+  drop.appendChild(newOpt);
+
+  // Pre-select most recently used, or go straight to new-name mode if none
+  const target = lastJourneyName || (journeys.length ? journeys[journeys.length - 1].name : null);
+  if (target) {
+    $('journey-label').textContent = target;
+    $('journey-inp').style.display = 'none';
+    currentJourneyIsNew = false;
+  } else {
+    activateNewJourney();
+  }
+}
+
+function openJourneyDrop() {
+  const rect = $('journey-trigger').getBoundingClientRect();
+  const drop = $('journey-drop');
+  drop.style.top   = (rect.bottom + 4) + 'px';
+  drop.style.left  = rect.left + 'px';
+  drop.style.width = rect.width + 'px';
+  drop.removeAttribute('hidden');
+  $('journey-backdrop').removeAttribute('hidden');
+}
+
+function closeJourneyDrop() {
+  $('journey-drop').setAttribute('hidden', '');
+  $('journey-backdrop').setAttribute('hidden', '');
+}
+
+function pickJourney(name) {
+  $('journey-label').textContent = name;
+  $('journey-inp').style.display = 'none';
+  lastJourneyName = name;
+  currentJourneyIsNew = false;
+  closeJourneyDrop();
+}
+
+function activateNewJourney() {
+  $('journey-label').textContent = 'New journey…';
+  currentJourneyIsNew = true;
+  const inp = $('journey-inp');
+  inp.style.display = '';
+  inp.value = '';
+  closeJourneyDrop();
+  inp.focus();
 }
 
 function getCurrentJourney() {
-  const name = $('journey-inp').value.trim() || 'Untitled Journey';
+  const name = currentJourneyIsNew
+    ? ($('journey-inp').value.trim() || 'Untitled Journey')
+    : ($('journey-label').textContent || 'Untitled Journey');
   lastJourneyName = name;
   return name;
 }
@@ -482,7 +562,7 @@ let timerIval    = null;
 
 function startTimer() {
   timerRunning = true;
-  $('timer-btn').textContent = '&#9632; Stop';
+  $('timer-btn').innerHTML = '&#9632; Stop';
   $('timer-btn').classList.add('running');
   timerIval = setInterval(() => { timerSec++; updateTimerDisp(); }, 1000);
 }
@@ -982,6 +1062,9 @@ $('start-btn').addEventListener('click', () => {
   renderMem();
   show('memorize');
 });
+
+$('journey-trigger').addEventListener('click', openJourneyDrop);
+$('journey-backdrop').addEventListener('click', closeJourneyDrop);
 
 $('timer-btn').addEventListener('click', () => {
   if (timerRunning) stopTimer(); else startTimer();
