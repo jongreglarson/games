@@ -264,6 +264,14 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* ── SCORE DISPLAY (results) ── */
+    .r-score-area { text-align: center; margin-bottom: 16px; }
+    .r-score-val  { font-size: 3.5rem; font-weight: 700; color: var(--acc); line-height: 1; }
+    .r-score-lbl  {
+      font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.06em; margin-top: 4px;
+    }
+
     /* ── iOS install hint ── */
     #install-hint {
       display: none;
@@ -363,6 +371,10 @@
   <div class="r-icon" id="r-icon">&#129504;</div>
   <div class="r-title" id="r-title">Great job!</div>
   <div class="r-sub" id="r-sub">Here's how you did</div>
+  <div class="r-score-area">
+    <div class="r-score-val" id="r-score">0</div>
+    <div class="r-score-lbl">Score</div>
+  </div>
   <div class="stats-grid">
     <div class="stat-box"><div class="stat-val" id="r-correct">0</div><div class="stat-lbl">Correct</div></div>
     <div class="stat-box"><div class="stat-val" id="r-acc">0%</div><div class="stat-lbl">Accuracy</div></div>
@@ -410,9 +422,9 @@ function loadStats() {
 }
 function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
 
-function recordSessionStats(correct, attempts) {
+function recordSessionStats(correct, attempts, score) {
   const s = loadStats();
-  s.highScore     = Math.max(s.highScore     || 0, correct);
+  s.bestScore     = Math.max(s.bestScore     || 0, score);
   s.totalCorrect  = (s.totalCorrect  || 0) + correct;
   s.totalAttempts = (s.totalAttempts || 0) + attempts;
   saveStats(s);
@@ -421,7 +433,7 @@ function recordSessionStats(correct, attempts) {
 
 function refreshStatsBar() {
   const s = loadStats();
-  $('stat-best').textContent    = (s.highScore > 0) ? s.highScore : '—';
+  $('stat-best').textContent    = (s.bestScore > 0) ? s.bestScore + ' pts' : '—';
   $('stat-overall').textContent = (s.totalAttempts > 0)
     ? Math.round(s.totalCorrect / s.totalAttempts * 100) + '%'
     : '—';
@@ -530,11 +542,18 @@ function problemText(p) {
   return `${fmt(p.a)} ${sym[p.op]} ${fmt(p.b)}`;
 }
 
+// ── SCORING ──────────────────────────────────────────────────────
+function pointsForProblem(ans, streak) {
+  const base = String(Math.abs(Math.round(ans))).length; // digits in answer
+  const mult = streak >= 10 ? 3 : streak >= 5 ? 2 : streak >= 3 ? 1.5 : 1;
+  return Math.round(base * mult);
+}
+
 // ── GAME ─────────────────────────────────────────────────────────
 function startGame() {
   gs = {
     correct: 0, attempts: 0, streak: 0, bestStreak: 0,
-    wrongCnt: 0, allCleared: false,
+    score: 0, wrongCnt: 0, allCleared: false,
     t0: Date.now(), timeLeft: TIME_SEC,
     ticker: null, cur: null, queue: [],
   };
@@ -581,7 +600,7 @@ function nextQ() {
   gs.cur      = p;
   gs.wrongCnt = 0;
   $('g-prog').textContent     = Math.ceil(Math.max(0, gs.timeLeft)) + 's';
-  $('g-score').textContent    = gs.correct;
+  $('g-score').textContent    = gs.score;
   $('problem-eq').textContent = problemText(gs.cur);
 }
 
@@ -595,9 +614,12 @@ function checkAnswer() {
     gs.correct++;
     gs.streak++;
     gs.bestStreak = Math.max(gs.bestStreak, gs.streak);
+    const pts  = pointsForProblem(gs.cur.ans, gs.streak);
+    gs.score  += pts;
     inp.className = 'answer-inp ok';
-    setHint('✓ Correct!', 'ok');
+    setHint(`✓ +${pts} pts`, 'ok');
     showStreak();
+    $('g-score').textContent = gs.score;
     if (cfg.missedMode) removeMissed(gs.cur);
     setTimeout(() => { gs.attempts++; nextQ(); }, 700);
   } else {
@@ -628,7 +650,9 @@ function setHint(txt, cls) {
 }
 
 function showStreak() {
-  $('streak').textContent = gs.streak >= 3 ? `🔥 ${gs.streak} in a row!` : '';
+  if (gs.streak < 3) { $('streak').textContent = ''; return; }
+  const mult = gs.streak >= 10 ? '×3' : gs.streak >= 5 ? '×2' : '×1.5';
+  $('streak').textContent = `🔥 ${gs.streak} in a row!  ${mult}`;
 }
 
 function endGame() {
@@ -636,8 +660,9 @@ function endGame() {
   const elapsed = Math.round((Date.now() - gs.t0) / 1000);
   const acc     = gs.attempts > 0 ? Math.round(gs.correct / gs.attempts * 100) : 0;
 
-  recordSessionStats(gs.correct, gs.attempts);
+  recordSessionStats(gs.correct, gs.attempts, gs.score);
 
+  $('r-score').textContent   = gs.score;
   $('r-correct').textContent = gs.correct;
   $('r-acc').textContent     = acc + '%';
   $('r-streak').textContent  = gs.bestStreak;
