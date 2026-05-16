@@ -292,7 +292,7 @@
 <!-- ═══ SETUP ═══ -->
 <div id="setup" class="screen on">
   <div class="navbar">
-    <button class="icon-btn">&#8592;</button>
+    <button class="icon-btn" id="back-to-games">&#8592;</button>
     <span class="nav-title">Basic Operations</span>
     <div style="width:36px"></div>
   </div>
@@ -738,6 +738,8 @@ $('install-x').addEventListener('click', () => {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
+
+$('back-to-games').addEventListener('click', () => { window.location.href = '../'; });
 
 // ── INIT ─────────────────────────────────────────────────────────
 refreshMissedUI();

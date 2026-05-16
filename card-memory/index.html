@@ -330,6 +330,7 @@
   <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;align-items:center">
     <button class="cta-btn" id="start-btn">Shuffle &amp; Memorize</button>
     <button class="ghost-btn" id="hist-btn-setup">History</button>
+    <button class="ghost-btn" id="back-to-games">&#8592; Games</button>
   </div>
 </div>
 
@@ -1087,6 +1088,7 @@ $('trail-next').addEventListener('click', () => { viewGroup++; renderTrail(); })
 $('quit-btn').addEventListener('click', () => show('setup'));
 
 $('hist-btn-setup').addEventListener('click', showHistory);
+$('back-to-games').addEventListener('click', () => { window.location.href = '../'; });
 $('hist-btn-results').addEventListener('click', showHistory);
 $('hist-back-btn').addEventListener('click', () => show('setup'));
 
