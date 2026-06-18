@@ -126,7 +126,7 @@
     }
     .nav-btn:disabled { opacity: 0.25; cursor: default; }
     .done-btn {
-      flex: 1; height: 52px;
+      width: 100%; max-width: 260px; height: 48px;
       background: var(--acc); border: none; border-radius: 14px;
       color: white; font-size: 0.95rem; font-weight: 700; cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -354,11 +354,13 @@
     <span class="timer-disp" id="timer-disp">0:00</span>
     <button class="timer-btn" id="timer-btn">&#9654; Start</button>
   </div>
+  <div style="display:flex;justify-content:center;margin-bottom:10px">
+    <button class="done-btn" id="done-btn">Done — Test Me</button>
+  </div>
   <div class="mem-row" id="mem-row"></div>
   <div>
-    <div class="mem-nav">
+    <div class="mem-nav" style="justify-content:center;gap:20px">
       <button class="nav-btn" id="prev-btn">&#8592;</button>
-      <button class="done-btn" id="done-btn">Done — Test Me</button>
       <button class="nav-btn" id="next-btn">&#8594;</button>
     </div>
   </div>
@@ -1072,7 +1074,7 @@ $('timer-btn').addEventListener('click', () => {
 });
 
 $('prev-btn').addEventListener('click', () => { memPage--; renderMem(); });
-$('next-btn').addEventListener('click', () => { memPage++; renderMem(); });
+$('next-btn').addEventListener('click', () => { memPage++; renderMem(); if (!timerRunning) startTimer(); });
 
 $('done-btn').addEventListener('click', () => {
   pendingJourney = getCurrentJourney();
