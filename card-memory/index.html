@@ -108,6 +108,27 @@
     .mem-title { font-size: 1rem; font-weight: 600; }
     .mem-pos   { font-size: 0.82rem; color: var(--muted); }
 
+    .info-wrap { position: relative; display: inline-flex; align-items: center; }
+    .info-btn {
+      width: 20px; height: 20px; flex-shrink: 0;
+      background: transparent; border: 1.5px solid var(--border); border-radius: 50%;
+      color: var(--muted); font-size: 0.72rem; font-weight: 700; font-style: italic;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent; padding: 0; line-height: 1;
+      transition: border-color .15s, color .15s;
+    }
+    .info-btn:hover, .info-btn.active { border-color: var(--acc); color: var(--acc); }
+    .info-tip {
+      position: absolute; top: calc(100% + 8px); left: 0;
+      width: 248px;
+      background: var(--surf2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; font-size: 0.82rem; line-height: 1.6; color: var(--txt);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5); z-index: 150;
+      opacity: 0; pointer-events: none;
+      transition: opacity .15s;
+    }
+    .info-wrap:hover .info-tip, .info-tip.show { opacity: 1; pointer-events: auto; }
+
     .mem-row {
       flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
     }
@@ -339,7 +360,17 @@
 <!-- ═══ MEMORIZE ═══ -->
 <div id="memorize" class="screen gp">
   <div class="mem-topbar">
-    <span class="mem-title">Memorize</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="mem-title">Memorize</span>
+      <div class="info-wrap">
+        <button class="info-btn" id="info-btn">i</button>
+        <div class="info-tip" id="info-tip">
+          Browse cards 3 at a time using ← →.<br>
+          Name your journey, then start the timer when you begin.<br>
+          On the last page, tap <strong>Done — Test Me</strong> to start recall.
+        </div>
+      </div>
+    </div>
     <span class="mem-pos" id="mem-pos">1 – 3 of 52</span>
   </div>
   <div class="journey-row">
@@ -1068,6 +1099,16 @@ $('start-btn').addEventListener('click', () => {
   populateJourneyList();
   renderMem();
   show('memorize');
+});
+
+$('info-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  const shown = $('info-tip').classList.toggle('show');
+  $('info-btn').classList.toggle('active', shown);
+});
+document.addEventListener('click', () => {
+  $('info-tip').classList.remove('show');
+  $('info-btn').classList.remove('active');
 });
 
 $('journey-trigger').addEventListener('click', openJourneyDrop);
