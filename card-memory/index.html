@@ -193,7 +193,7 @@
     }
     .journey-opt:last-child { border-bottom: none; }
     .journey-opt:active { background: var(--surf); }
-    .journey-opt-date { font-size: 0.72rem; color: var(--muted); white-space: nowrap; margin-left: 8px; }
+    .journey-opt-meta { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
     .journey-new-opt { color: var(--acc); justify-content: center; font-weight: 600; border-top: 1px solid var(--border); }
     .journey-backdrop { position: fixed; inset: 0; z-index: 199; }
     .journey-inp {
@@ -510,7 +510,7 @@ function populateJourneyList() {
       opt.className = 'journey-opt';
       const d  = new Date(j.lastUsed);
       const ds = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-      opt.innerHTML = `<span>${j.name}</span><span class="journey-opt-date">${ds}</span>`;
+      opt.innerHTML = `<div><div>${j.name}</div><div class="journey-opt-meta">Last used ${ds}</div></div>`;
       opt.addEventListener('click', () => pickJourney(j.name));
       list.appendChild(opt);
     });
