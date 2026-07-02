@@ -111,43 +111,43 @@
     .mem-row {
       flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
     }
-    .mem-card { flex: 1; max-width: 108px; height: 150px; }
-    .mem-card .c-val  { font-size: 2.2rem; }
-    .mem-card .c-suit { font-size: 2.6rem; margin-top: 3px; }
-    .mem-card .card-corner { font-size: 0.78rem; }
+    .mem-card { flex: 1; max-width: 124px; height: 182px; }
+    .mem-card .c-val  { font-size: 2.6rem; }
+    .mem-card .c-suit { font-size: 3.1rem; margin-top: 4px; }
+    .mem-card .card-corner { font-size: 0.82rem; }
 
-    .mem-nav { display: flex; gap: 10px; align-items: center; }
+    .mem-nav { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+    .mem-timer-center { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: center; }
     .nav-btn {
-      width: 52px; height: 52px; flex-shrink: 0;
-      background: var(--surf); border: 1px solid var(--border); border-radius: 14px;
+      width: 56px; height: 56px; flex-shrink: 0;
+      background: var(--surf); border: 1px solid var(--border); border-radius: 16px;
       color: var(--txt); font-size: 1.4rem; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       -webkit-tap-highlight-color: transparent;
     }
     .nav-btn:disabled { opacity: 0.25; cursor: default; }
     .done-btn {
-      width: 100%; max-width: 260px; height: 48px;
+      width: 100%; max-width: 280px; height: 50px;
       background: var(--acc); border: none; border-radius: 14px;
       color: white; font-size: 0.95rem; font-weight: 700; cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
-
-    .mem-timer-row {
-      display: flex; align-items: center; justify-content: center; gap: 14px;
-      margin-bottom: 8px;
-    }
     .timer-disp {
-      font-size: 1.6rem; font-weight: 700; color: var(--acc);
-      font-variant-numeric: tabular-nums; min-width: 3.8rem; text-align: right;
+      font-size: 1.55rem; font-weight: 700; color: var(--acc);
+      font-variant-numeric: tabular-nums;
     }
     .timer-btn {
-      padding: 7px 16px; background: var(--surf); border: 1px solid var(--border);
-      border-radius: 999px; color: var(--muted); font-size: 0.82rem; cursor: pointer;
-      -webkit-tap-highlight-color: transparent; min-width: 72px; text-align: center;
+      padding: 6px 14px; background: var(--surf); border: 1px solid var(--border);
+      border-radius: 999px; color: var(--muted); font-size: 0.8rem; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; min-width: 68px; text-align: center;
     }
     .timer-btn.running { border-color: var(--red); color: var(--red); }
 
     .journey-row { margin-bottom: 8px; }
+    .journey-label-txt {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em;
+      color: var(--muted); font-weight: 600; margin-bottom: 5px;
+    }
     .journey-trigger {
       width: 100%; padding: 9px 12px;
       background: var(--surf); border: 1px solid var(--border); border-radius: 10px;
@@ -159,8 +159,10 @@
     .journey-drop {
       position: fixed;
       background: var(--surf2); border: 1px solid var(--border); border-radius: 10px;
-      z-index: 200; overflow-y: auto; -webkit-overflow-scrolling: touch;
-      max-height: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+      z-index: 200; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+    .journey-drop-list {
+      overflow-y: auto; -webkit-overflow-scrolling: touch; max-height: 200px;
     }
     .journey-opt {
       padding: 11px 14px; cursor: pointer; font-size: 0.88rem;
@@ -171,7 +173,7 @@
     .journey-opt:last-child { border-bottom: none; }
     .journey-opt:active { background: var(--surf); }
     .journey-opt-date { font-size: 0.72rem; color: var(--muted); white-space: nowrap; margin-left: 8px; }
-    .journey-new-opt { color: var(--acc); justify-content: center; font-weight: 600; }
+    .journey-new-opt { color: var(--acc); justify-content: center; font-weight: 600; border-top: 1px solid var(--border); }
     .journey-backdrop { position: fixed; inset: 0; z-index: 199; }
     .journey-inp {
       width: 100%; padding: 9px 12px; margin-top: 6px;
@@ -341,6 +343,7 @@
     <span class="mem-pos" id="mem-pos">1 – 3 of 52</span>
   </div>
   <div class="journey-row">
+    <div class="journey-label-txt">Name of Journey</div>
     <div class="journey-trigger" id="journey-trigger">
       <span id="journey-label">Select journey&hellip;</span>
       <span class="journey-caret">&#9660;</span>
@@ -350,19 +353,17 @@
     <input id="journey-inp" class="journey-inp" type="text"
            placeholder="New journey name&hellip;" autocomplete="off" style="display:none" />
   </div>
-  <div class="mem-timer-row">
-    <span class="timer-disp" id="timer-disp">0:00</span>
-    <button class="timer-btn" id="timer-btn">&#9654; Start</button>
-  </div>
-  <div style="display:flex;justify-content:center;margin-bottom:10px">
+  <div class="mem-row" id="mem-row"></div>
+  <div id="done-wrap" style="display:none;justify-content:center;margin-bottom:4px">
     <button class="done-btn" id="done-btn">Done — Test Me</button>
   </div>
-  <div class="mem-row" id="mem-row"></div>
-  <div>
-    <div class="mem-nav" style="justify-content:center;gap:20px">
-      <button class="nav-btn" id="prev-btn">&#8592;</button>
-      <button class="nav-btn" id="next-btn">&#8594;</button>
+  <div class="mem-nav">
+    <button class="nav-btn" id="prev-btn">&#8592;</button>
+    <div class="mem-timer-center">
+      <span class="timer-disp" id="timer-disp">0:00</span>
+      <button class="timer-btn" id="timer-btn">&#9654; Start</button>
     </div>
+    <button class="nav-btn" id="next-btn">&#8594;</button>
   </div>
 </div>
 
@@ -469,15 +470,21 @@ function populateJourneyList() {
   const journeys = loadJourneys().sort((a, b) => a.lastUsed - b.lastUsed); // oldest first
 
   drop.innerHTML = '';
-  journeys.forEach(j => {
-    const opt = document.createElement('div');
-    opt.className = 'journey-opt';
-    const d  = new Date(j.lastUsed);
-    const ds = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-    opt.innerHTML = `<span>${j.name}</span><span class="journey-opt-date">${ds}</span>`;
-    opt.addEventListener('click', () => pickJourney(j.name));
-    drop.appendChild(opt);
-  });
+
+  if (journeys.length) {
+    const list = document.createElement('div');
+    list.className = 'journey-drop-list';
+    journeys.forEach(j => {
+      const opt = document.createElement('div');
+      opt.className = 'journey-opt';
+      const d  = new Date(j.lastUsed);
+      const ds = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      opt.innerHTML = `<span>${j.name}</span><span class="journey-opt-date">${ds}</span>`;
+      opt.addEventListener('click', () => pickJourney(j.name));
+      list.appendChild(opt);
+    });
+    drop.appendChild(list);
+  }
 
   const newOpt = document.createElement('div');
   newOpt.className = 'journey-opt journey-new-opt';
@@ -633,6 +640,7 @@ function renderMem() {
   $('mem-pos').textContent = `${start + 1} – ${end} of 52`;
   $('prev-btn').disabled = memPage === 0;
   $('next-btn').disabled = memPage >= PAGES - 1;
+  $('done-wrap').style.display = memPage >= PAGES - 1 ? 'flex' : 'none';
 }
 
 // ── RECALL SETUP ──────────────────────────────────────────────────
@@ -669,10 +677,6 @@ function buildValGrid() {
     const b = document.createElement('button');
     b.className = 'val-btn';
     b.textContent = v;
-    // K is 13th (index 12); with 4 cols it lands alone in row 4 — center it
-    if (i === 12) {
-      b.style.cssText = 'grid-column: 1 / -1; max-width: 60px; margin: 0 auto;';
-    }
     b.addEventListener('click', () => enterCard(v));
     grid.appendChild(b);
   });
