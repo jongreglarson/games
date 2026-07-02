@@ -523,8 +523,8 @@ function populateJourneyList() {
   newOpt.addEventListener('click', activateNewJourney);
   drop.appendChild(newOpt);
 
-  // Pre-select most recently used, or go straight to new-name mode if none
-  const target = lastJourneyName || (journeys.length ? journeys[journeys.length - 1].name : null);
+  // Pre-select oldest (least recently used), or go straight to new-name mode if none
+  const target = lastJourneyName || (journeys.length ? journeys[0].name : null);
   if (target) {
     $('journey-label').textContent = target;
     $('journey-inp').style.display = 'none';
@@ -1150,12 +1150,11 @@ $('again-btn').addEventListener('click', () => {
 $('home-btn').addEventListener('click', () => show('setup'));
 
 // ── INIT ──────────────────────────────────────────────────────────
-// Seed lastJourneyName from the most recently used journey so it's
-// correct even before the user makes any selection in this session.
+// Seed lastJourneyName from the oldest (least recently used) journey.
 (function () {
   const journeys = loadJourneys();
   if (journeys.length) {
-    lastJourneyName = journeys.reduce((a, b) => a.lastUsed > b.lastUsed ? a : b).name;
+    lastJourneyName = journeys.reduce((a, b) => a.lastUsed < b.lastUsed ? a : b).name;
   }
 })();
 populateJourneyList();
